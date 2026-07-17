@@ -1,0 +1,47 @@
+name: APK Auto Patcher
+
+on:
+  workflow_dispatch: # يتيح لك تشغيل الأداة يدوياً بضغطة زر
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    - name: Download APKTool
+      run: |
+        wget https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar -O apktool.jar
+
+    - name: Download Roblox 2016 APK Directly
+      run: |
+        wget "https://github.com/Roblox-DeployHistory-Updates/android-runner/releases/download/v0.262.0.67283/roblox.apk" -O roblox.apk
+
+    - name: Decompile Original APK
+      run: |
+        java -jar apktool.jar d roblox.apk -o extracted_apk
+
+    - name: Run Patch Script
+      run: python patch.py
+
+    - name: Rebuild Patched APK
+      run: |
+        java -jar apktool.jar b extracted_apk -o patched_roblox.apk
+
+    - name: Sign APK
+      run: |
+        keytool -genkey -v -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-alias -storepass password -keypass password -dname "CN=MyRevival, OU=Dev, O=Pekora, L=City, S=State, C=US"
+        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA256 -keystore my-release-key.jks -storepass password patched_roblox.apk my-alias
+
+    - name: Upload Finished APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: My-Patched-Roblox-Game
+        path: patched_roblox.apk
